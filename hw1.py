@@ -9,7 +9,7 @@ class World(object):
     def __init__(self):
         pass
 
-    def draw(pose, particles):
+    def draw(self, pose, particles):
         fig = plt.figure(i, figsize=(8,8))
         sp = fig.add_subplot(111, aspect='equal')
         sp.set_xlim(-1.0, 1.0)
@@ -23,19 +23,19 @@ class World(object):
         fig = plt.quiver(xs, ys, vxs, vys, color='blue', label="particles")
         plt.quiver([pose[0]], [pose[1]], [math.cos(pose[2])], [math.sin(pose[2])],color="red",label="actual robot motion")
 
-    def draw_landmarks(landmarks):
+    def draw_landmarks(self, landmarks):
         xs = [e [0] for e in landmarks]
         ys = [e [1] for e in landmarks]
         plt.scatter(xs, ys, s=300, marker="*", label="landmarks", color="orange")
 
-    def draw_observation(pose, measurement):
+    def draw_observation(self, pose, measurement):
         x,y,th = pose
         distance, direction, lx, ly = measurement
         lx = distance * math.cos(th + direction) + x
         ly = distance * math.sin(th + direction) + y
         plt.plot([x, lx], [y, ly], color='pink')
         
-    def draw_observations(pose, measurement):
+    def draw_observations(self, pose, measurement):
         for m in measurement:
             self.draw_observation(pose, m)    
 
@@ -43,7 +43,7 @@ class Agent(object):
     def __init__(self):
         pass
 
-    def relative_landmark_pos(pose, landmark):
+    def relative_landmark_pos(self, pose, landmark):
         x,y,th = pose
         lx, ly = landmark
         distance = math.sqrt((x-lx)**2 + (y-ly)**2)
@@ -51,7 +51,7 @@ class Agent(object):
 
         return (distance, direction, lx, ly)
 
-    def observation(pose, landmark):
+    def observation(self, pose, landmark):
         actual_distance, actual_direction, lx, ly = self.relative_landmark_pos(pose, landmark)
         #place limit in sensor view
         if math.cos(actual_direction) < 0.0: #only see left right 90deg, cant see anything behind
@@ -62,10 +62,10 @@ class Agent(object):
         return (measured_distance, measured_direction, lx, ly)
 
     # remove None from list
-    def observations(pose, landmarks):
+    def observations(self, pose, landmarks):
         return filter(lambda x: x != None, [self.observation(pose,e) for e in landmarks])
 
-    def f(x_old, u):
+    def f(self, x_old, u):
         pos_x, pos_y, pos_th = x_old
         act_fw, act_rot = u
         
@@ -80,7 +80,7 @@ class Agent(object):
         return np.array([pos_x, pos_y, pos_th])
 
     ## comparing particle and measurements
-    def likelihood(pose, measurement):
+    def likelihood(self, pose, measurement):
         x,y,th = pose
         distance, direction, lx, ly = measurement
 
@@ -97,7 +97,7 @@ class Agent(object):
         return eval_distance * eval_direction
 
     ## update particle weights
-    def change_weights(particles, measurement):
+    def change_weights(self, particles, measurement):
         for p in particles:
             p.weight *= self.likelihood(p.pose, measurement)
 
@@ -107,7 +107,7 @@ class Agent(object):
         for p in particles:
             p.weight = p.weight/s
 
-    def resampling(particles):
+    def resampling(self, particles):
         sample = []
         particle_num = len(particles)
         pointer = 0.0
