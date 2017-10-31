@@ -6,10 +6,14 @@ from matplotlib.patches import Ellipse
 from scipy.stats import norm
 
 class World(object):
-    def __init__(self):
-        pass
+    def update(self, path, particle_path, actual_landmarks, measurements):
+        for i, p in enumerate(path):
+            self.draw_agent_pose(path[i], particle_path[i])
+            self.draw_landmarks(actual_landmarks)
+            self.draw_agent_observations(path[i], measurements[i])
+            plt.show()
 
-    def draw(self, pose, particles):
+    def draw_agent_pose(self, pose, particles):
         fig = plt.figure(i, figsize=(8,8))
         sp = fig.add_subplot(111, aspect='equal')
         sp.set_xlim(-1.0, 1.0)
@@ -28,16 +32,13 @@ class World(object):
         ys = [e [1] for e in landmarks]
         plt.scatter(xs, ys, s=300, marker="*", label="landmarks", color="orange")
 
-    def draw_observation(self, pose, measurement):
+    def draw_agent_observations(self, pose, measurements):
         x,y,th = pose
-        distance, direction, lx, ly = measurement
-        lx = distance * math.cos(th + direction) + x
-        ly = distance * math.sin(th + direction) + y
-        plt.plot([x, lx], [y, ly], color='pink')
-        
-    def draw_observations(self, pose, measurement):
-        for m in measurement:
-            self.draw_observation(pose, m)    
+        for measurement in measurements:
+            distance, direction, lx, ly = measurement
+            lx = distance * math.cos(th + direction) + x
+            ly = distance * math.sin(th + direction) + y
+            plt.plot([x, lx], [y, ly], color='pink')
 
 class Agent(object):
     def __init__(self):
@@ -65,8 +66,8 @@ class Agent(object):
     def observations(self, pose, landmarks):
         return filter(lambda x: x != None, [self.observation(pose,e) for e in landmarks])
 
-    def f(self, x_old, u):
-        pos_x, pos_y, pos_th = x_old
+    def move(self, old_x, u):
+        pos_x, pos_y, pos_th = old_x
         act_fw, act_rot = u
         
         act_fw = random.gauss(act_fw, act_fw/10) #adjust noise 20, 2
@@ -90,22 +91,12 @@ class Agent(object):
         # evaluate error using gauss
         eval_distance = norm.pdf(x = distance - rel_distance, loc = 0.0, scale = rel_distance/10.0)
         eval_direction = norm.pdf(x = direction - rel_direction, loc = 0.0, scale = 5.0/180.0 * math.pi)
-        #sigma = 1.0
-        #eval_distance = math.exp(-((distance - rel_distance)**2)/(sigma**2)/2.0)/math.sqrt(2.0*math.pi*(sigma**2))
-        #eval_direction = math.exp(-((direction - rel_direction)**2)/(sigma**2)/2.0)/math.sqrt(2.0*math.pi*(sigma**2))
 
         return eval_distance * eval_direction
 
-    ## update particle weights
     def change_weights(self, particles, measurement):
         for p in particles:
             p.weight *= self.likelihood(p.pose, measurement)
-
-        # normalize weight (making sure the total weight equals to 1
-        ws = [p.weight for p in particles]
-        s = sum(ws)
-        for p in particles:
-            p.weight = p.weight/s
 
     def resampling(self, particles):
         sample = []
@@ -123,12 +114,11 @@ class Agent(object):
         return sample
 
 class Particle(object):
-    def __init__(self, p, w):
-        x = 0#random.uniform(-1.0, 1.0)
-        y = 0#random.uniform(-0.5, 1.5)
-        th = 0#random.uniform(0, math.pi)
-        #self.pose = np.array([x, y, th])
-        self.pose = np.array(p)
+    def __init__(self, w):
+        x = random.uniform(-1.0, 1.0)
+        y = random.uniform(-0.5, 1.5)
+        th = random.uniform(0, math.pi)
+        self.pose = np.array([x, y, th])
         self.weight = w
 
     def __repr__(self):
@@ -137,35 +127,33 @@ class Particle(object):
 if __name__ == '__main__':
     agent = Agent()
     world = World()
-    num_particles = 5000
-    actual_x = np.array([0.0,0.0,0.0]) #actual robot pos
+    
+    actual_x = np.array([0.0,0.0,0.0])
     actual_landmarks = [np.array([-0.5, 0.0]), np.array([0.5, 0.0]), np.array([0.0, 0.5])]
-    #particles = [Particle([random.uniform(-1.0,1.0),random.uniform(-0.5,1.5), random.uniform(0, math.pi)],(1.0/num_particles)) for i in range(num_particles)]
-    particles = [Particle([0,0,0],(1.0/num_particles)) for i in range(num_particles)]
-    u = np.array([0.2, math.pi/180.0 * 20]) #robot motion
+     
+    num_particles = 5000
+    particles = [Particle(1.0/num_particles) for i in range(num_particles)]
 
     path = [actual_x]
     particle_path = [copy.deepcopy(particles)]
     measurements = [agent.observations(actual_x, actual_landmarks)]
 
+    u = np.array([0.2, math.pi/180.0 * 20]) #robot motion
+    
     for i in range(10):
-        actual_x = agent.f(actual_x, u)
+        actual_x = agent.move(actual_x, u)
         path.append(actual_x)
         ms = agent.observations(actual_x, actual_landmarks)
         measurements.append(ms)
-        
+
         for p in particles:
-            p.pose = agent.f(p.pose, u)
+            p.pose = agent.move(p.pose, u)
 
         for m in ms:
             agent.change_weights(particles, m)
-        
+
         particles = agent.resampling(particles)
-        
+
         particle_path.append(copy.deepcopy(particles))
-        
-    for i, p in enumerate(path):
-        world.draw(path[i], particle_path[i])
-        world.draw_landmarks(actual_landmarks)
-        world.draw_observations(path[i], measurements[i])
-        plt.show()
+
+    world.update(path, particle_path, actual_landmarks, measurements)
