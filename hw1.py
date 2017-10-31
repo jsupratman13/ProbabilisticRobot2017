@@ -41,9 +41,6 @@ class World(object):
             plt.plot([x, lx], [y, ly], color='pink')
 
 class Agent(object):
-    def __init__(self):
-        pass
-
     def relative_landmark_pos(self, pose, landmark):
         x,y,th = pose
         lx, ly = landmark
@@ -70,9 +67,9 @@ class Agent(object):
         pos_x, pos_y, pos_th = old_x
         act_fw, act_rot = u
         
-        act_fw = random.gauss(act_fw, act_fw/10) #adjust noise 20, 2
-        dir_error = random.gauss(0, math.pi/180*3) #adjust noise 
-        act_rot = random.gauss(act_rot, act_rot/10) #adjust noise 20, 2
+        act_fw = random.gauss(act_fw, act_fw/10) 
+        dir_error = random.gauss(0, math.pi/180*3) 
+        act_rot = random.gauss(act_rot, act_rot/10) 
         
         pos_x += act_fw * math.cos(pos_th + dir_error)
         pos_y += act_fw * math.sin(pos_th + dir_error)
@@ -80,9 +77,8 @@ class Agent(object):
 
         return np.array([pos_x, pos_y, pos_th])
 
-    ## comparing particle and measurements
+    ## evaluate particle
     def likelihood(self, pose, measurement):
-        x,y,th = pose
         distance, direction, lx, ly = measurement
 
         # prediction of measurement from particles
@@ -113,6 +109,20 @@ class Agent(object):
             sample.append(copy.deepcopy(particles[index]))
         return sample
 
+    def accuracy(self, pose, particles):
+        ws = sum([p.weight for p in particles])
+        max_weight = -1000
+        for p in particles:
+            if p.weight > max_weight:
+                max_weight = p.weight
+                max_p = p
+            p.weight = p.weight/ws
+        error_x = pose[0] - max_p.pose[0]
+        error_y = pose[1] - max_p.pose[1]
+        error_th = pose[2] - max_p.pose[2]
+        return math.sqrt(error_x**2 + error_y**2 + error_th**2)
+
+
 class Particle(object):
     def __init__(self, w):
         x = random.uniform(-1.0, 1.0)
@@ -138,7 +148,7 @@ if __name__ == '__main__':
     particle_path = [copy.deepcopy(particles)]
     measurements = [agent.observations(actual_x, actual_landmarks)]
 
-    u = np.array([0.2, math.pi/180.0 * 20]) #robot motion
+    u = np.array([0.2, math.pi/180.0 * 20])
     
     for i in range(10):
         actual_x = agent.move(actual_x, u)
@@ -153,7 +163,7 @@ if __name__ == '__main__':
             agent.change_weights(particles, m)
 
         particles = agent.resampling(particles)
-
+        
         particle_path.append(copy.deepcopy(particles))
 
     world.update(path, particle_path, actual_landmarks, measurements)
