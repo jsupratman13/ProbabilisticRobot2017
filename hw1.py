@@ -40,6 +40,17 @@ class World(object):
             ly = distance * math.sin(th + direction) + y
             plt.plot([x, lx], [y, ly], color='pink')
 
+class Particle(object):
+    def __init__(self, w):
+        x = random.uniform(-1.0, 1.0)
+        y = random.uniform(-0.5, 1.5)
+        th = random.uniform(0, math.pi)
+        self.pose = np.array([x, y, th])
+        self.weight = w
+
+    def __repr__(self):
+        return "pose: " + str(self.pose) + " weight: " + str(self.weight)
+
 class Agent(object):
     def relative_landmark_pos(self, pose, landmark):
         x,y,th = pose
@@ -109,31 +120,6 @@ class Agent(object):
             sample.append(copy.deepcopy(particles[index]))
         return sample
 
-    def accuracy(self, pose, particles):
-        ws = sum([p.weight for p in particles])
-        max_weight = -1000
-        for p in particles:
-            if p.weight > max_weight:
-                max_weight = p.weight
-                max_p = p
-            p.weight = p.weight/ws
-        error_x = pose[0] - max_p.pose[0]
-        error_y = pose[1] - max_p.pose[1]
-        error_th = pose[2] - max_p.pose[2]
-        return math.sqrt(error_x**2 + error_y**2 + error_th**2)
-
-
-class Particle(object):
-    def __init__(self, w):
-        x = random.uniform(-1.0, 1.0)
-        y = random.uniform(-0.5, 1.5)
-        th = random.uniform(0, math.pi)
-        self.pose = np.array([x, y, th])
-        self.weight = w
-
-    def __repr__(self):
-        return "pose: " + str(self.pose) + " weight: " + str(self.weight)
-
 if __name__ == '__main__':
     agent = Agent()
     world = World()
@@ -151,17 +137,23 @@ if __name__ == '__main__':
     u = np.array([0.2, math.pi/180.0 * 20])
     
     for i in range(10):
+        # agent control output
         actual_x = agent.move(actual_x, u)
         path.append(actual_x)
+
+        #agent sensor input
         ms = agent.observations(actual_x, actual_landmarks)
         measurements.append(ms)
 
+        #motion update
         for p in particles:
             p.pose = agent.move(p.pose, u)
 
+        #sensor update
         for m in ms:
             agent.change_weights(particles, m)
 
+        #resampling
         particles = agent.resampling(particles)
         
         particle_path.append(copy.deepcopy(particles))
