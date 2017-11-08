@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 size = 3 #size of map
-values = np.array([[100,100,100],[100,100,100],[100,100,0]]) #initial value for each grid
+values = np.array([[100.0,100.0,100.0],[100.0,100.0,100.0],[100.0,100.0,0.0]]) #initial value for each grid
+swamp = (2,1)
 goal = (2,2) #set goal state
 actions = ['up','down','left','right'] #actions robot can take
 policy = [['up','up','up'],['up','up','up'],['up','up',None]] #brain of robot
@@ -19,7 +20,7 @@ def draw(mark_pos, action):
 
     for x in range(len(values)):
         for y in range(len(values[0])):
-            plt.text(x+0.5,y+0.5,int(1000*values[x][y])/1000,ha='center',va='center',size=20)
+            plt.text(x+0.5,y+0.5,round(values[x][y],2),ha='center',va='center',size=20)
 
     plt.text(goal[0]+0.75,goal[1]+0.75,'G',ha='center',va='center',size=20)
 
@@ -32,7 +33,7 @@ def draw(mark_pos, action):
         plt.text(mark_pos[0]+0.5,mark_pos[1]+0.25,action,ha='center',va='center',size=20)
     
     plt.show(block=False)
-    time.sleep(3)
+    time.sleep(0.5)
 #    fig.clear()
     plt.close()
 
@@ -53,8 +54,12 @@ def action_value(pos, action, goal):
     if pos == goal: return values[pos[0]][pos[1]]
     cur_v = values[pos[0]][pos[1]]
     post_v = postvalue(pos, action)
-    return 1.0 + 0.9*post_v + 0.1*cur_v #walk cost + 90% of transition + 10% of staying
+    swamp_cost = 0.0
+    if pos == swamp: swamp_cost += 10.0
 
+    return 1.0 + 0.9*post_v + 0.1*cur_v + swamp_cost #walk cost + 90% of transition + 10% of staying
+		#return 0.9*(post_v + 1.0) + 0.1*(cur_v+1.0) # bellman equation
+		
 def sweep():
     changed = False
     for x in range(size):
