@@ -100,6 +100,20 @@ def sarsa(s_pos,a):
     print '----------------------'
     return s_next_pos, a2, q
 
+def q_learning(s_pos,a):
+    alpha = 0.5
+    gamma = 1.0
+
+    s = states[s_pos[0]][s_pos[1]]
+    s_next_pos = state_transition(s_pos, a)
+    s2 = states[s_next_pos[0]][s_next_pos[1]]
+    a2 = e_greedy(s2)
+
+    q = (1.0-alpha)*s.Q[a]+alpha*(1.0+gamma*s2.Q[s2.best_action])
+    print 's: ' + str(s_pos) + ' a: ' + str(a) + ' s2: ' + str(s_next_pos)
+    print '----------------------'
+    return s_next_pos, a2, q
+
 def one_step():
     agent.pos = [random.randrange(size), random.randrange(size)]
     a = e_greedy(states[agent.pos[0]][agent.pos[1]])
@@ -108,7 +122,8 @@ def one_step():
 
     while True:
         #draw(None)
-        s2, a2, q = sarsa(agent.pos, a)
+        #s2, a2, q = sarsa(agent.pos, a)
+        s2, a2, q = q_learning(agent.pos, a)
         states[agent.pos[0]][agent.pos[1]].Q[a] = q
         agent.pos = s2
         a = a2
@@ -125,5 +140,5 @@ states = [[State(agent.actions) for i in range(size)] for j in range(size)]
 states[2][2].set_goal(agent.actions)
 
 #draw(None)
-for i in range(3):
+for i in range(10):
     train()
