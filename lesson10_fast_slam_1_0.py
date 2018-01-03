@@ -70,7 +70,8 @@ class Robot(object):
 class LandmarkEstimation(object):
     def __init__(self):
         self.pos = np.array([[0.0],[0.0]])
-        self.cov = np.array([[1000000000.0*2,0.0],[0.0,1000000000.0*2]])
+        self.cov = np.array([[1000000000.0**2,0.0],
+                             [0.0,1000000000.0**2]])
 
 class Particle(object):
     def __init__(self,pose,w):
@@ -92,7 +93,7 @@ class Particle(object):
         delta = np.array([[x],[y]])-np.array([[lx],[ly]])
         coef = 2*math.pi*math.sqrt(np.linalg.det(ln.cov))
         inexp = -0.5*(delta.T.dot(np.linalg.inv(ln.cov))).dot(delta)
-        self.w = 1.0/coef * math.exp(inexp)
+        self.w *= 1.0/coef * math.exp(inexp)
 
         #map update
         ## create element
@@ -108,7 +109,7 @@ class Particle(object):
         ## update covariance matrix and map
         ln.cov = np.linalg.inv(np.linalg.inv(ln.cov)+np.linalg.inv(err_world))
         K = (ln.cov).dot(np.linalg.inv(err_world))
-        ln.pos += K.dot(x-ln.pos)
+        ln.pos += K.dot(z-ln.pos)
 
     def draw(self, i):
         fig = plt.figure(i,figsize=(4,4))
@@ -153,7 +154,7 @@ class FastSLAM(object):
         num = len(self.particles)
         ws = [e.w for e in self.particles]
         if sum(ws) < 1e-100:
-            w = [e+1e-100 for e in ws]
+            ws = [e+1e-100 for e in ws]
         ps = random.choices(self.particles, weights=ws, k=num)
         self.particles = [copy.deepcopy(e) for e in ps]
 
@@ -176,7 +177,7 @@ robot = Robot(np.array([0.1, 0.2, math.pi*20.0/180.0]))
 '''
 ## DBUG##
 observations = robot.observation(m)
-print observations
+print(observations)
 
 fig=plt.figure(0,figsize=(8,8))
 sp = fig.add_subplot(111,aspect='equal')
@@ -209,7 +210,7 @@ for observation in observations:
 
 robot.draw()
 m.draw()
-
+plt.show()
 #######
 '''
 robot.pose = np.array([0.0,0.0,0.0])
@@ -219,7 +220,7 @@ n = 30
 for i in range(n):
     one_step(m)
 
-print str(n) + ' step map'
+print(str(n) + ' step map')
 slam.draw()
 
 plt.show()
