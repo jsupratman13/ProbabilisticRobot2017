@@ -23,7 +23,6 @@ class WorldMap(object):
         for i in range(3):
             x, y = random.randint(self.MARGIN+5, self.WIDTH/2-self.MARGIN-5),random.randint(self.MARGIN+5, self.HEIGHT-self.MARGIN-5)
             self.landmarks.append([x,y])
-        self.landmarks = [[170, 50], [50, 300], [300,300]]
 
         self.WORLD = pygame.Rect([self.MARGIN, self.MARGIN, self.HEIGHT-self.MARGIN, self.WIDTH-self.MARGIN])
     
@@ -154,8 +153,18 @@ class FastSLAM(object):
 
     def resampling(self):
         ws = [e.w+1e-100 for e in self.particles]
-        sample = random.choices(self.particles, weights=ws, k=self.N)
-        self.particles = [copy.deepcopy(particle) for particle in sample]
+        sample = []
+        pointer = 0.0
+        index = int(random.random()*self.N)
+        max_w = max(ws)
+        for i in range(self.N):
+            pointer += random.uniform(0, 2*max_w)
+            while ws[index] < pointer:
+                pointer -= ws[index]
+                index = (index+1)%self.N
+            self.particles[index].weight = 1.0/self.N
+            sample.append(copy.deepcopy(self.particles[index]))
+        self.particles = sample
 
 def clamp_rad(th):
     return th%(2*math.pi)
